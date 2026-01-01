@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4A90E2">
+    <title>2026願景追蹤器 - Firebase同步版</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 { font-size: 24px; margin-bottom: 10px; }
+        .date-display { font-size: 14px; opacity: 0.9; }
+        .sync-status {
+            display: inline-block;
+            padding: 5px 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .sync-status.online { background: rgba(76, 175, 80, 0.3); }
+        .sync-status.syncing { background: rgba(255, 193, 7, 0.3); }
+        .tabs {
+            display: flex;
+            background: #f5f5f5;
+            border-bottom: 2px solid #ddd;
+        }
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        .tab.active {
+            background: white;
+            border-bottom: 3px solid #667eea;
+            color: #667eea;
+        }
+        .content {
+            padding: 20px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .task-item {
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        .task-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .task-item.completed {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+            opacity: 0.7;
+        }
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+        .task-info { flex: 1; }
+        .task-time {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 14px;
+        }
+        .task-title {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+        .task-goal {
+            font-size: 12px;
+            color: #999;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .scripture-input {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+        }
+        .scripture-input input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+        .btn:hover { background: #5568d3; transform: translateY(-2px); }
+        .btn-success { background: #4caf50; }
+        .btn-success:hover { background: #45a049; }
+        .btn-danger { background: #f44336; }
+        .reward-box {
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .notification-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+        .notification-btn:hover { transform: scale(1.1); }
+        .login-box {
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .login-box h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .device-list {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .device-item {
+            padding: 10px;
+            background: white;
+            margin: 8px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginScreen" class="login-box">
+        <h2>🔐 登入你的願景追蹤器</h2>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">
+            登入後數據會自動同步到所有設備
+        </p>
+        <input type="email" id="emailInput" placeholder="電郵地址">
+        <input type="password" id="passwordInput" placeholder="密碼（最少6位）">
+        <button class="btn" style="width: 100%;" onclick="login()">登入</button>
+        <button class="btn btn-success" style="width: 100%;" onclick="register()">註冊新帳號</button>
+        <p style="text-align: center; color: #999; margin-top: 15px; font-size: 12px;">
+            使用Firebase免費帳號，數據安全加密
+        </p>
+    </div>
+
+    <div class="container" id="mainApp" style="display: none;">
+        <div class="header">
+            <h1>🎯 2026願景追蹤器</h1>
+            <div class="date-display" id="dateDisplay"></div>
+            <div class="sync-status" id="syncStatus">
+                <span id="syncIcon">🔄</span> 
+                <span id="syncText">同步中...</span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('daily')">📅 每日</div>
+            <div class="tab" onclick="showTab('scripture')">📖 背經</div>
+            <div class="tab" onclick="showTab('weekly')">📋 每週</div>
+            <div class="tab" onclick="showTab('stats')">📊 統計</div>
+            <div class="tab" onclick="showTab('settings')">⚙️ 設定</div>
+        </div>
+
+        <div class="content" id="content"></div>
+    </div>
+
+    <button class="notification-btn" onclick="enableNotifications()" title="開啟通知">🔔</button>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">提示</h3>
+            <p id="modalMessage"></p>
+            <button class="btn" onclick="closeModal()">確定</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <script src="app-firebase.js"></script>
+</body>
+</html>
